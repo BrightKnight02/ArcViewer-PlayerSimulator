@@ -53,5 +53,6 @@ public enum SettingsTab
     Player,
     Colors,
     Graphics,
-    Advanced
+    Advanced,
+    Robot
 }
