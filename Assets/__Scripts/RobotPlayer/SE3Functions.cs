@@ -1,9 +1,9 @@
 using Unity.Mathematics;
 using UnityEngine;
 
-public class ExtendedMathFunctions
+public class SE3Functions
 {
-    public float4x4 ScrewMatrixExponential(float3 screwRotAxis, float3 screwTransAxis, float theta)
+    public static float4x4 ScrewMatrixExponential(float3 screwRotAxis, float3 screwTransAxis, float theta)
     {
         // calculates exp([A] * theta) where A = [w^T v^T]^T is a screw axis
 
@@ -21,7 +21,7 @@ public class ExtendedMathFunctions
         }
     }
 
-    public float3x3 SkewedVector(float3 vector)
+    public static float3x3 SkewedVector(float3 vector)
     {
         // converts a vector [a, b, c]^T into a skew-symmetric 3x3 matrix of the form
         // [[ 0, -c,  b]
@@ -32,18 +32,43 @@ public class ExtendedMathFunctions
                             -vector[1], vector[0], 0);
     }
 
-    public float3x3 RotationInverse(float3x3 rot)
+    public static float3x3 RotationInverse(float3x3 rot)
     {
         // returns the inverse of a SO(3) matrix
         return math.transpose(rot);
     }
 
-    public float4x4 PoseInverse(float4x4 pose)
+    public static float4x4 PoseInverse(float4x4 pose)
     {
         // calculates the inverse of a matrix in SE(3)
         float3x3 rotInv = RotationInverse(new float3x3(pose));
-        float3 pos = new float3(pose.c3[0], pose.c3[1], pose.c3[2]);
+        float3 pos = PosePos(pose);
         return new float4x4(rotInv, -math.mul(rotInv, pos));
+    }
+
+    public static float3 PosePos(float4x4 pose)
+    {
+        return new float3(pose.c3[0], pose.c3[1], pose.c3[2]);
+    }
+
+    public static (float3, float3) AdjointBigSE3(float4x4 pose, float3 rotation, float3 translation)
+    {
+        // calculates [Ad_T] * V for a pose T and a twist/screw V of form [rotation^T translation^T]^T
+        float3x3 rot = new float3x3(pose);
+        float3 pos = PosePos(pose);
+        float3 upper = math.mul(rot, rotation);
+        float3 lower = math.mul(SkewedVector(pos), math.mul(rot, rotation)) + math.mul(rot, translation);
+
+        return (upper, lower);
+    }
+
+    public static (float3, float3) AdjointLittleSE3(float3 upper1, float3 lower1, float3 upper2, float3 lower2)
+    {
+        // calculates [ad_V1]V2 for a pair of screw/twist/wrench structures V1 and V2
+        float3 upper = math.mul(SkewedVector(upper1), upper2);
+        float3 lower = math.mul(SkewedVector(lower1), upper2) + math.mul(SkewedVector(upper1), lower2);
+
+        return (upper, lower);
     }
 
 }
