@@ -7,29 +7,35 @@ public class TwoLimbSystem : MonoBehaviour
     public GameObject limb1game;
     public GameObject limb2game;
 
+    public float4x4 debugPose1;
+    public float4x4 debugPose2;
+
     private static float4x4 limb1Home = new float4x4(1, 0, 0, 0,
                                               0, 1, 0, 0.5f,
-                                              0, 0, 1, 1,
+                                              0, 0, 1, 0,
                                               0, 0, 0, 1);
     private static float3[] limb1ScrewRot = { new float3(1, 0, 0), new float3(0, 1, 0) };
+    private static float3[] limb1ScrewPos = { new float3(0, 0, 0), new float3(0, 0, 0) };
 
     //private static Limb limb1;
 
 
     private static float4x4 limb2Home = new float4x4(1, 0, 0, 0,
                                               0, 1, 0, 1.5f,
-                                              0, 0, 1, 1,
+                                              0, 0, 1, 0,
                                               0, 0, 0, 1);
     private static float3[] limb2ScrewRot = { new float3(0, 0, 1) };
+    private static float3[] limb2ScrewPos = { new float3(0, 1, 0) };
 
     //private static Limb limb2;
 
     static ConnectedLimbSystem twoLimbSys;
 
+
     private void Start()
     {
-        Limb limb1 = new Limb("limb1", limb1game, 1, float3.zero, 2, null, new string[] { "limb2" }, limb1Home, limb1ScrewRot);
-        Limb limb2 = new Limb("limb2", limb2game, 1, float3.zero, 1, "limb1", null, limb2Home, limb2ScrewRot);
+        Limb limb1 = new Limb("limb1", limb1game, 1, float3.zero, 2, null, new string[] { "limb2" }, limb1Home, limb1ScrewRot, limb1ScrewPos);
+        Limb limb2 = new Limb("limb2", limb2game, 1, float3.zero, 1, "limb1", null, limb2Home, limb2ScrewRot, limb2ScrewPos);
         Limb[] twoLimbLimbs = { limb1, limb2 };
         twoLimbSys = new ConnectedLimbSystem(twoLimbLimbs);
     }
@@ -44,6 +50,8 @@ public class TwoLimbSystem : MonoBehaviour
 
         //Debug.Log("Theta: " + theta.ToString());
         twoLimbSys.OrientGameObjects(theta);
+        debugPose1 = twoLimbSys.debugPose1;
+        debugPose2 = twoLimbSys.debugPose2;
     }
 
 }

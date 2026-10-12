@@ -4,11 +4,15 @@ using Unity.Mathematics;
 using NUnit.Framework;
 using System.Collections.Generic;
 using System.Linq;
+using Unity.VisualScripting;
 
 public class ConnectedLimbSystem
 {
     public Limb root;
     public int totalInputs;
+
+    public float4x4 debugPose1;
+    public float4x4 debugPose2;
 
     public ConnectedLimbSystem(Limb[] limbs)
     {
@@ -19,7 +23,10 @@ public class ConnectedLimbSystem
         for(int i = 0; i < limbs.Length; i++)
         {
             this.totalInputs += limbs[i].numInputs;
-            List<Limb> nextLimbs = new List<Limb>();
+
+            //Debug.Log("Limb "+ limbs[i].name + " nextLimb Count: " + limbs[i].nextLimbNames.Length.ToString());
+            Limb[] nextLimbs = new Limb[limbs[i].nextLimbNames.Length];
+            int nextIndexTracker = 0;
 
             for(int j = 0; j < limbs.Length; j++)
             {
@@ -29,10 +36,11 @@ public class ConnectedLimbSystem
                 }
                 if(limbs[i].nextLimbNames.Contains(limbs[j].name))
                 {
-                    nextLimbs.Add(limbs[j]);
+                    nextLimbs[nextIndexTracker] = (limbs[j]);
+                    nextIndexTracker++;
                 }
             }
-            limbs[i].nextLimbs = nextLimbs.ToArray();
+            limbs[i].nextLimbs = nextLimbs;
 
             if(limbs[i].prevLimbName == null)
             {
@@ -43,21 +51,20 @@ public class ConnectedLimbSystem
             {
                 limbs[i].relLinkPose = math.mul(SE3Functions.PoseInverse(limbs[i].homePose), limbs[i].prevLimb.homePose);
             }
-            DetermineInputOffset(root, 0); // I think this should return the total number of inputs
         }
+        DetermineInputOffset(root, 0); // I think this should return the total number of inputs
     }
 
-    private int DetermineInputOffset(Limb root, int currentOffset)
+    private int DetermineInputOffset(Limb limb, int currentOffset)
     {
         // recursively step through the limb tree to find the start index of the inputs
         // to all the limbs for a flat input array
-        root.inputOffset = currentOffset;
-        int offsetChange = root.numInputs;
-        //Debug.Log(root.name);
+        limb.inputOffset = currentOffset;
+        int offsetChange = limb.numInputs;
 
-        for(int i = 0; i < root.nextLimbs.Length; i++)
+        for(int i = 0; i < limb.nextLimbs.Length; i++)
         {
-            offsetChange += DetermineInputOffset(root.nextLimbs[i], currentOffset + offsetChange);
+            offsetChange += DetermineInputOffset(limb.nextLimbs[i], currentOffset + offsetChange);
         }
         return offsetChange;
     }
@@ -76,6 +83,15 @@ public class ConnectedLimbSystem
         for(int i = 0; i < limb.nextLimbs.Length; i++)
         {
             PoseWalker(positionVector, limb.nextLimbs[i], limbPose);
+        }
+        if(limb == this.root)
+        {
+            debugPose1 = worldPose;
+            //Debug.Log(limb.visObject.transform.position);
+        } 
+        else if(limb != this.root)
+        {
+            debugPose2 = worldPose;
         }
     }
 }
@@ -107,7 +123,7 @@ public class Limb
     private float3[] LinkScrewRotAxes; // vectors in link frame representing the rotation axes for inputs at home
     private float3[] LinkScrewTransAxes; // vectors in link frame representing the translation axes for the inputs at home
 
-    public Limb(string name, GameObject visObject, float limbMass, float3 limbInertia, int numInputs, string prevLimbName, string[] nextLimbsNames, float4x4 homePose, float3[] screwRotAxes, float3[] screwTransAxes = null)
+    public Limb(string name, GameObject visObject, float limbMass, float3 limbInertia, int numInputs, string prevLimbName, string[] nextLimbNames, float4x4 homePose, float3[] screwRotAxes, float3[] screwPivotPoints)
     {
         this.name = name;
         this.visObject = visObject;
@@ -119,23 +135,21 @@ public class Limb
         this.prevLimbName = prevLimbName;
         if(nextLimbNames == null)
         {
+            Debug.Log("Null nextlimbs");
             this.nextLimbNames = new string[] { };
         }
         else
         {
-            this.nextLimbNames = nextLimbsNames;
+            this.nextLimbNames = nextLimbNames;
         }
         this.homePose = homePose;
 
 
         this.BodyScrewRotAxes = screwRotAxes;
-        if(screwTransAxes == null)
+        this.BodyScrewTransAxes = screwPivotPoints;
+        for(int i = 0; i < numInputs; i++)
         {
-            this.BodyScrewTransAxes = new float3[numInputs];
-            for(int i = 0; i < numInputs; i++)
-            {
-                this.BodyScrewTransAxes[i] = float3.zero;
-            }
+            this.BodyScrewTransAxes[i] = math.mul(-SE3Functions.SkewedVector(screwRotAxes[i]), screwPivotPoints[i]);
         }
 
         this.LinkScrewRotAxes = new float3[numInputs];
@@ -150,13 +164,13 @@ public class Limb
     }
     public float4x4 RelativePoseFromInput(float[] positionsVector)
     {
-        // gives the transform from the previous limb to this limb with rotations
-        float4x4 output = math.mul(SE3Functions.ScrewMatrixExponential(this.LinkScrewRotAxes[0], this.LinkScrewTransAxes[0], positionsVector[this.inputOffset]), this.relLinkPose);
-        for(int i = 1; i < this.numInputs; i++)
+        // gives the transform from the this limb to the previous limb with rotations
+        float4x4 output = float4x4.identity; 
+        for(int i = 0; i < this.numInputs; i++)
         {
-            output = math.mul(SE3Functions.ScrewMatrixExponential(this.LinkScrewRotAxes[i], this.LinkScrewTransAxes[i], positionsVector[this.inputOffset + i]), output);
+            output = math.mul(SE3Functions.ScrewMatrixExponential(-1*this.LinkScrewRotAxes[i], -1*this.LinkScrewTransAxes[i], positionsVector[this.inputOffset + i]), output);
         }
-        return output;
+        return math.mul(output, this.relLinkPose);
     }
 }
 
