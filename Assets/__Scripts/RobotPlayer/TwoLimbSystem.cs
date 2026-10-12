@@ -12,20 +12,22 @@ public class TwoLimbSystem : MonoBehaviour
 
     private static float4x4 limb1Home = new float4x4(1, 0, 0, 0,
                                               0, 1, 0, 0.5f,
-                                              0, 0, 1, 0,
+                                              0, 0, 1, 1,
                                               0, 0, 0, 1);
-    private static float3[] limb1ScrewRot = { new float3(1, 0, 0), new float3(0, 1, 0) };
-    private static float3[] limb1ScrewPos = { new float3(0, 0, 0), new float3(0, 0, 0) };
+    private static float3[] limb1ScrewRot = { new float3(1, 0, 0), 
+                                              new float3(0, 1, 0) };
+    private static float3[] limb1ScrewPos = { new float3(0, 0, 1), 
+                                              new float3(0, 0, 1) };
 
     //private static Limb limb1;
 
 
     private static float4x4 limb2Home = new float4x4(1, 0, 0, 0,
-                                              0, 1, 0, 1.5f,
-                                              0, 0, 1, 0,
-                                              0, 0, 0, 1);
+                                                     0, 1, 0, 1.5f,
+                                                     0, 0, 1, 1,
+                                                     0, 0, 0, 1);
     private static float3[] limb2ScrewRot = { new float3(0, 0, 1) };
-    private static float3[] limb2ScrewPos = { new float3(0, 1, 0) };
+    private static float3[] limb2ScrewPos = { new float3(0, 1, 1) };
 
     //private static Limb limb2;
 
