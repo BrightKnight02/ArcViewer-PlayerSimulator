@@ -78,20 +78,182 @@ public class ConnectedLimbSystem
     {
         float4x4 limbPose = math.mul(limb.RelativePoseFromInput(positionVector), prevPose);
         float4x4 worldPose = SE3Functions.PoseInverse(limbPose);
+
         limb.visObject.transform.position = SE3Functions.PosePos(worldPose);
         limb.visObject.transform.rotation = math.quaternion(new float3x3(worldPose));
+
         for(int i = 0; i < limb.nextLimbs.Length; i++)
         {
             PoseWalker(positionVector, limb.nextLimbs[i], limbPose);
         }
-        if(limb == this.root)
+    }
+
+    public float[] ForwardDynamicsInputs(float[] states, float[] velocities, float[] accelerations)
+    {
+        // takes in joint states, joint velocities, and joint accelerations to calculate the joint torques
+        // needed to get that state
+
+        float4x4[] relativePoses = new float4x4[states.Length];
+
+        float3[] twistRot = new float3[states.Length];
+        float3[] twistTrans = new float3[states.Length];
+
+        float3[] dTwistRot = new float3[states.Length];
+        float3[] dTwistTrans = new float3[states.Length];
+
+        ForwardDynamicsForwardStep(this.root, states, velocities, accelerations, ref relativePoses, ref twistRot, ref twistTrans, ref dTwistRot, ref dTwistTrans);
+
+        float3[] wrenchMoments = new float3[states.Length];
+        float3[] wrenchForces = new float3[states.Length];
+
+        ForwardDynamicsBackwardStep(this.root, states, velocities, accelerations,
+                                                   ref relativePoses, ref twistRot, ref twistTrans, ref dTwistRot,
+                                                   ref dTwistTrans, ref wrenchMoments, ref wrenchForces);
+
+        float[] jointInputs = new float[states.Length];
+        CalcJointForces(this.root, ref wrenchMoments, ref wrenchForces, ref jointInputs);
+        return jointInputs;
+
+    }
+    private void ForwardDynamicsForwardStep(Limb limb, float[] states, float[] velocities, float[] accelerations,
+                                            ref float4x4[] relativePoses,
+                                            ref float3[] twistRot, ref float3[] twistTrans,
+                                            ref float3[] dTwistRot, ref float3[] dTwistTrans)
+    {
+        // used for unpacking
+        float3 tempRot;
+        float3 tempTrans;
+
+        float3 prevTwistRot;
+        float3 prevTwistTrans;
+        float3 prevDTwistRot;
+        float3 prevDTwistTrans;
+
+        for(int inputIndex = 0; inputIndex < limb.numInputs; inputIndex++)
         {
-            debugPose1 = worldPose;
-            //Debug.Log(limb.visObject.transform.position);
-        } 
-        else if(limb != this.root)
+            int writeIndex = inputIndex + limb.inputOffset;
+            // T_{i, i-1} = exp(-[A_i] \theta_i) * M_{i, i-1}
+            relativePoses[writeIndex] = SE3Functions.ScrewMatrixExponential(-limb.LinkScrewRotAxes[0], -limb.LinkScrewTransAxes[0], states[writeIndex]);
+            if(inputIndex == 0)
+            {
+                relativePoses[writeIndex] = math.mul(relativePoses[writeIndex], limb.relLinkPose);
+            }
+
+            // selecting the correct V_{i-1} and \dot V_{i-1} values
+            if(inputIndex == 0)
+            {
+                if(writeIndex == 0)
+                {
+                    prevTwistRot = float3.zero;
+                    prevTwistTrans = float3.zero;
+                    prevDTwistRot = float3.zero;
+                    prevDTwistTrans = new float3(0, -9.81f, 0);
+                }
+                else
+                {
+                    int prevLimbIndex = limb.prevLimb.inputOffset + limb.prevLimb.numInputs - 1;
+                    prevTwistRot = twistRot[prevLimbIndex];
+                    prevTwistTrans = twistTrans[prevLimbIndex];
+                    prevDTwistRot = dTwistRot[prevLimbIndex];
+                    prevDTwistTrans = dTwistTrans[prevLimbIndex];
+                }
+            }
+            else
+            {
+                int prevWrite = writeIndex - 1;
+                prevTwistRot = twistRot[prevWrite];
+                prevTwistTrans = twistTrans[prevWrite];
+                prevDTwistRot = dTwistRot[prevWrite];
+                prevDTwistTrans = dTwistTrans[prevWrite];
+            }
+
+            // V_i = Ad_{T_{i, i-1}}(V_{i-1}) + A_i * \dot\theta
+            (tempRot, tempTrans) = SE3Functions.AdjointBigSE3(relativePoses[writeIndex], prevTwistRot, prevTwistTrans);
+            twistRot[writeIndex] = limb.LinkScrewRotAxes[inputIndex] * states[writeIndex] + tempRot;
+            twistTrans[writeIndex] = limb.LinkScrewTransAxes[inputIndex] * states[writeIndex] + tempTrans;
+
+            // \dot V_i = Ad_{T_{i, i-1}}(\dot V_{i-1}) + ad_{V_i}(A_i) * \dot\theta + A_i * \ddot\theta
+            (dTwistRot[writeIndex], dTwistTrans[writeIndex]) = SE3Functions.AdjointBigSE3(relativePoses[writeIndex], prevDTwistRot, prevDTwistTrans);
+            (tempRot, tempTrans) = SE3Functions.AdjointLittleSE3(twistRot[writeIndex], twistTrans[writeIndex], limb.LinkScrewRotAxes[inputIndex], limb.LinkScrewTransAxes[inputIndex]);
+            dTwistRot[writeIndex] += tempRot + limb.LinkScrewRotAxes[inputIndex] * accelerations[writeIndex];
+            dTwistTrans[writeIndex] += tempTrans + limb.LinkScrewTransAxes[inputIndex] * accelerations[writeIndex];
+        }
+        for(int i = 0; i < limb.nextLimbs.Length; i++)
         {
-            debugPose2 = worldPose;
+            ForwardDynamicsForwardStep(limb.nextLimbs[i], states, velocities, accelerations, ref relativePoses, ref twistRot, ref twistTrans, ref dTwistRot, ref dTwistTrans);
+        }
+    }
+
+    private void ForwardDynamicsBackwardStep(Limb limb, float[] states, float[] velocities, float[] accelerations,
+                                            ref float4x4[] relativePoses,
+                                            ref float3[] twistRot, ref float3[] twistTrans,
+                                            ref float3[] dTwistRot, ref float3[] dTwistTrans,
+                                            ref float3[] wrenchMoments, ref float3[] wrenchForces)
+    {
+        // sets the elements of wrenchMoments and wrenchForces corresponding to limb
+
+
+        // used for unpacking
+        float3 tempMoment;
+        float3 tempForce;
+
+        for(int inputIndex = limb.numInputs - 1; inputIndex > -1; inputIndex--)
+        {
+            int writeIndex = inputIndex + limb.inputOffset;
+
+            // Only do inertia calculations
+            if(inputIndex == limb.numInputs - 1)
+            {
+                // F_i = sum(Ad_{T_{next, i}^T F_{next}) + G_i \dot V_i - ad_{V_i}^T (G_i V_i)
+                wrenchMoments[writeIndex] = math.mul(limb.inertia, dTwistRot[writeIndex]);
+                wrenchForces[writeIndex] = limb.mass * dTwistTrans[writeIndex];
+
+                (tempMoment, tempForce) = SE3Functions.AdjointTransposeLittleSE3(twistRot[writeIndex], twistTrans[writeIndex],
+                    math.mul(limb.inertia, dTwistRot[writeIndex]), limb.mass * twistTrans[writeIndex]);
+                wrenchMoments[writeIndex] -= tempMoment;
+                wrenchForces[writeIndex] -= tempForce;
+                for(int outputIndex = 0; outputIndex < limb.nextLimbs.Length; outputIndex++)
+                {
+                    if(limb.nextLimbs.Length == 0)
+                    {
+                        // contact force calc to add to end limbs goes here
+
+                        wrenchMoments[writeIndex] += float3.zero;
+                        wrenchForces[writeIndex] += float3.zero;
+                    }
+                    else
+                    {
+
+                        int nextLimbIndex = limb.nextLimbs[outputIndex].inputOffset;
+                        // calculates the wrench of nextLimb[outputIndex] before adding
+                        // its contribution to the wrench of this limb
+                        ForwardDynamicsBackwardStep(limb.nextLimbs[outputIndex], states, velocities, accelerations,
+                                                ref relativePoses, ref twistRot, ref twistTrans, ref dTwistRot, ref dTwistTrans, ref wrenchMoments, ref wrenchForces);
+
+                        (tempMoment, tempForce) = SE3Functions.AdjointTransposeBigSE3(relativePoses[nextLimbIndex], wrenchMoments[nextLimbIndex], wrenchForces[nextLimbIndex]);
+                        wrenchMoments[writeIndex] += tempMoment;
+                        wrenchForces[writeIndex] += tempForce;
+                    }
+                }
+            }
+            else
+            {
+                // sublinks for a limb have no inertial components, so only the component from the link upstream contributes
+                (wrenchMoments[writeIndex], wrenchForces[writeIndex]) = SE3Functions.AdjointTransposeBigSE3(relativePoses[writeIndex + 1],
+                                                                                wrenchMoments[writeIndex + 1], wrenchForces[writeIndex + 1]);
+            }
+        }
+    }
+    private void CalcJointForces(Limb limb, ref float3[] wrenchMoments, ref float3[] wrenchForces, ref float[] jointInputs)
+    {
+        for(int i = 0; i < limb.numInputs; i++)
+        {
+            int writeIndex = limb.inputOffset + i;
+            jointInputs[writeIndex] = math.mul(limb.LinkScrewRotAxes[i], wrenchMoments[writeIndex]) + math.mul(limb.LinkScrewTransAxes[i], wrenchForces[writeIndex]);
+        }
+        for(int i = 0; i < limb.nextLimbs.Length; i++)
+        {
+            CalcJointForces(limb.nextLimbs[i], ref wrenchMoments, ref wrenchForces, ref jointInputs);
         }
     }
 }
@@ -102,8 +264,8 @@ public class Limb
 
     public string name;
     public GameObject visObject;
-    public float limbMass;
-    public float3x3 limbInertia; // inertia tensor of the limb
+    public float mass;
+    public float3x3 inertia; // inertia tensor of the limb
     public int numInputs;
     public int inputOffset;
 
@@ -120,15 +282,15 @@ public class Limb
     public float4x4 relLinkPose;
     public float3[] BodyScrewRotAxes; // vectors in base frame representing the rotation axes for inputs at home
     public float3[] BodyScrewTransAxes; // vectors in base frame representing the translation axes for the inputs at home
-    private float3[] LinkScrewRotAxes; // vectors in link frame representing the rotation axes for inputs at home
-    private float3[] LinkScrewTransAxes; // vectors in link frame representing the translation axes for the inputs at home
+    public float3[] LinkScrewRotAxes; // vectors in link frame representing the rotation axes for inputs at home
+    public float3[] LinkScrewTransAxes; // vectors in link frame representing the translation axes for the inputs at home
 
     public Limb(string name, GameObject visObject, float limbMass, float3 limbInertia, int numInputs, string prevLimbName, string[] nextLimbNames, float4x4 homePose, float3[] screwRotAxes, float3[] screwPivotPoints)
     {
         this.name = name;
         this.visObject = visObject;
-        this.limbMass = limbMass;
-        this.limbInertia = new float3x3(limbInertia[0], 0, 0,
+        this.mass = limbMass;
+        this.inertia = new float3x3(limbInertia[0], 0, 0,
                                         0, limbInertia[1], 0,
                                         0, 0, limbInertia[2]);
         this.numInputs = numInputs;
@@ -165,10 +327,10 @@ public class Limb
     public float4x4 RelativePoseFromInput(float[] positionsVector)
     {
         // gives the transform from the this limb to the previous limb with rotations
-        float4x4 output = float4x4.identity; 
+        float4x4 output = float4x4.identity;
         for(int i = 0; i < this.numInputs; i++)
         {
-            output = math.mul(SE3Functions.ScrewMatrixExponential(-1*this.LinkScrewRotAxes[i], -1*this.LinkScrewTransAxes[i], positionsVector[this.inputOffset + i]), output);
+            output = math.mul(SE3Functions.ScrewMatrixExponential(-1 * this.LinkScrewRotAxes[i], -1 * this.LinkScrewTransAxes[i], positionsVector[this.inputOffset + i]), output);
         }
         return math.mul(output, this.relLinkPose);
     }

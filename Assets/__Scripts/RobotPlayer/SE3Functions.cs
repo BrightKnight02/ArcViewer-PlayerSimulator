@@ -61,12 +61,30 @@ public class SE3Functions
 
         return (upper, lower);
     }
+    public static (float3, float3) AdjointTransposeBigSE3(float4x4 pose, float3 rotation, float3 translation)
+    {
+        // calculates [Ad_T]^T * V for a pose T and a twist/screw V of form [rotation^T translation^T]^T
+        float3x3 rot = math.transpose(new float3x3(pose));
+        float3 pos = PosePos(pose);
+        float3 upper = math.mul(rot, rotation) + math.mul(math.mul(rot, -SkewedVector(pos)), translation);
+        float3 lower = math.mul(rot, translation);
+
+        return (upper, lower);
+    }
 
     public static (float3, float3) AdjointLittleSE3(float3 upper1, float3 lower1, float3 upper2, float3 lower2)
     {
         // calculates [ad_V1]V2 for a pair of screw/twist/wrench structures V1 and V2
         float3 upper = math.mul(SkewedVector(upper1), upper2);
         float3 lower = math.mul(SkewedVector(lower1), upper2) + math.mul(SkewedVector(upper1), lower2);
+
+        return (upper, lower);
+    }
+    public static (float3, float3) AdjointTransposeLittleSE3(float3 upper1, float3 lower1, float3 upper2, float3 lower2)
+    {
+        // calculates [ad_V1]V2 for a pair of screw/twist/wrench structures V1 and V2
+        float3 upper = -math.mul(SkewedVector(upper1), upper2) - math.mul(SkewedVector(lower1), lower2);
+        float3 lower = -math.mul(SkewedVector(upper1), lower2);
 
         return (upper, lower);
     }
