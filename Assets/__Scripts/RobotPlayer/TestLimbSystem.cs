@@ -11,6 +11,7 @@ public class TestLimbSystem : MonoBehaviour
     public float[] dtheta;
     public float[] ddtheta;
     public float[] tau;
+    public float4x4[] worldPoses;
 
     public float4x4 debugPose1;
     public float4x4 debugPose2;
@@ -89,7 +90,7 @@ public class TestLimbSystem : MonoBehaviour
         testLimbSys.OrientGameObjects(thetaMod);
         debugPose1 = testLimbSys.debugPose1;
         debugPose2 = testLimbSys.debugPose2;
-        tau = testLimbSys.InverseDynamicsInputs(thetaMod, dtheta, ddtheta);
+        (tau, worldPoses) = testLimbSys.InverseDynamicsInputs(thetaMod, dtheta, ddtheta);
 
         relativePosesdb = testLimbSys.relativePosesdb;
 

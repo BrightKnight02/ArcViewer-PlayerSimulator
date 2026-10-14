@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using JetBrains.Annotations;
@@ -104,7 +105,7 @@ public class ConnectedLimbSystem
         }
     }
 
-    public float[] InverseDynamicsInputs(float[] states, float[] velocities, float[] accelerations)
+    public (float[], float4x4[]) InverseDynamicsInputs(float[] states, float[] velocities, float[] accelerations)
     {
         // calculates the inverse dynamics of a Limb System based on the current joint states and derivatives.
         // impliments the Newton-Euler Inverse Dynamics Algorithm from Modern Robotics by Lynch and Park
@@ -112,6 +113,7 @@ public class ConnectedLimbSystem
         // The tree structure caused by connected open chains makes this annoying.
 
         float4x4[] relativePoses = new float4x4[states.Length];
+        float4x4[] worldPoses = new float4x4[states.Length];
 
         float3[] twistRot = new float3[states.Length];
         float3[] twistTrans = new float3[states.Length];
@@ -120,6 +122,7 @@ public class ConnectedLimbSystem
         float3[] dTwistTrans = new float3[states.Length];
 
         InverseDynamicsForwardStep(this.root, states, velocities, accelerations, ref relativePoses, ref twistRot, ref twistTrans, ref dTwistRot, ref dTwistTrans);
+        CalcWorldPoses(this.root, ref relativePoses, ref worldPoses);
 
         float3[] wrenchMoments = new float3[states.Length];
         float3[] wrenchForces = new float3[states.Length];
@@ -142,7 +145,7 @@ public class ConnectedLimbSystem
         wrenchMomentsdb = wrenchMoments;
         wrenchForcesdb = wrenchForces;
 
-        return jointInputs;
+        return (jointInputs, worldPoses);
 
     }
     private void InverseDynamicsForwardStep(Limb limb, float[] states, float[] velocities, float[] accelerations,
@@ -287,6 +290,54 @@ public class ConnectedLimbSystem
             CalcJointForces(limb.nextLimbs[i], ref wrenchMoments, ref wrenchForces, ref jointInputs);
         }
     }
+    private void CalcWorldPoses(Limb limb, ref float4x4[] relativePoses, ref float4x4[] worldPoses)
+    {
+        if(limb.inputOffset == 0)
+        {
+            worldPoses[0] = SE3Functions.PoseInverse(relativePoses[0]);
+        }
+        else
+        {
+            worldPoses[limb.inputOffset] = math.mul(worldPoses[limb.prevLimb.inputOffset + limb.prevLimb.numInputs - 1], SE3Functions.PoseInverse(relativePoses[limb.inputOffset]));
+        }
+        for(int i = 1; i < limb.numInputs; i++)
+        {
+            worldPoses[limb.inputOffset + i] = math.mul(worldPoses[limb.inputOffset + i - 1], SE3Functions.PoseInverse(relativePoses[limb.inputOffset + i]));
+        }
+        for(int i = 0; i < limb.nextLimbs.Length; i++)
+        {
+            CalcWorldPoses(limb.nextLimbs[i], ref relativePoses, ref worldPoses);
+        }
+    }
+    public Limb FindLimbByName(string target)
+    {
+        return FindLimbByName(this.root, target);
+    }
+    private Limb FindLimbByName(Limb limb, string target)
+    {
+        if(target == limb.name)
+        {
+            return limb;
+        }
+        else if(limb.nextLimbs.Length == 0)
+        {
+            return null;
+        }
+        else
+        {
+            Limb holder;
+            for(int i = 0; i < limb.nextLimbs.Length; i++)
+            {
+                holder = FindLimbByName(limb.nextLimbs[i], target);
+                if(holder.name == target)
+                {
+                    return holder;
+                }
+            }
+            return null;
+        }
+
+    }
 }
 
 public class Limb
@@ -298,6 +349,8 @@ public class Limb
     public float mass;
     public float3x3 inertia; // inertia tensor of the limb
     public int numInputs;
+    public float[] lowerJointLimits;
+    public float[] upperJointLimits;
     public int inputOffset;
 
     public string prevLimbName;
@@ -316,10 +369,43 @@ public class Limb
     public float3[] LinkScrewRotAxes; // vectors in link frame representing the rotation axes for inputs at home
     public float3[] LinkScrewTransAxes; // vectors in link frame representing the translation axes for the inputs at home
 
-    public Limb(string name, GameObject visObject, float limbMass, float3 limbInertia, string prevLimbName, string[] nextLimbNames, float4x4 homePose, float3[] screwRotAxes, float3[] screwPivotPoints)
+    public Limb(string name, GameObject visObject, float limbMass, float3 limbInertia,
+        string prevLimbName, string[] nextLimbNames, float4x4 homePose,
+        float3[] screwRotAxes, float3[] screwPivotPoints,
+        float[] lowerJointLimits = null, float[] upperJointLimits = null)
     {
         this.name = name;
         this.numInputs = screwRotAxes.Length;
+        this.lowerJointLimits = new float[this.numInputs];
+        if(lowerJointLimits == null)
+        {
+            for(int i = 0; i < this.numInputs; i++)
+            {
+                this.lowerJointLimits[i] = -math.INFINITY;
+            }
+        }
+        else
+        {
+            for(int i = 0; i < this.numInputs; i++)
+            {
+                this.lowerJointLimits[i] = lowerJointLimits[i];
+            }
+        }
+        this.upperJointLimits = new float[this.numInputs];
+        if(lowerJointLimits == null)
+        {
+            for(int i = 0; i < this.numInputs; i++)
+            {
+                this.upperJointLimits[i] = -math.INFINITY;
+            }
+        }
+        else
+        {
+            for(int i = 0; i < this.numInputs; i++)
+            {
+                this.upperJointLimits[i] = upperJointLimits[i];
+            }
+        }
         this.visObject = visObject;
         this.mass = limbMass;
         this.inertia = new float3x3(limbInertia[0], 0, 0,
@@ -342,7 +428,14 @@ public class Limb
         this.BodyScrewTransAxes = screwPivotPoints;
         for(int i = 0; i < numInputs; i++)
         {
-            this.BodyScrewTransAxes[i] = math.mul(-SE3Functions.SkewedVector(screwRotAxes[i]), screwPivotPoints[i]);
+            if(screwRotAxes[i].Equals(float3.zero))
+            {
+                this.BodyScrewTransAxes[i] = screwPivotPoints[i];
+            }
+            else
+            {
+                this.BodyScrewTransAxes[i] = math.mul(-SE3Functions.SkewedVector(screwRotAxes[i]), screwPivotPoints[i]);
+            }
         }
 
         this.LinkScrewRotAxes = new float3[numInputs];
