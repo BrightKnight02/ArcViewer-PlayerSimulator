@@ -93,4 +93,5 @@ public class SE3Functions
         // returns a SE(3) matrix with R=I and p=pos
         return new float4x4(float3x3.identity, pos);
     }
+
 }

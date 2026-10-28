@@ -1,18 +1,16 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using JetBrains.Annotations;
-using NUnit.Framework;
 using Unity.Mathematics;
 using Unity.VisualScripting;
 using UnityEngine;
-using static UnityEditor.VersionControl.Asset;
 
 public class ConnectedLimbSystem
 {
     public Limb root;
     public int totalInputs;
-
+    public float[] jointLowerLimits;
+    public float[] jointUpperLimits;
 
     public float4x4 debugPose1;
     public float4x4 debugPose2;
@@ -28,15 +26,19 @@ public class ConnectedLimbSystem
     public float3[] wrenchMomentsdb;
     public float3[] wrenchForcesdb;
 
-    public ConnectedLimbSystem(Limb[] limbs)
+    public GameObject sysObject;
+
+    public ConnectedLimbSystem(Limb[] limbs, string name)
     {
         Debug.Log("Constructing Limb System");
         this.totalInputs = 0;
+        this.sysObject = new GameObject(name);
 
         // Set up limb tree to have links to other limb objects
         for(int i = 0; i < limbs.Length; i++)
         {
             this.totalInputs += limbs[i].numInputs;
+            limbs[i].visObject.transform.parent = this.sysObject.transform;
 
             //Debug.Log("Limb "+ limbs[i].name + " nextLimb Count: " + limbs[i].nextLimbNames.Length.ToString());
             Limb[] nextLimbs = new Limb[limbs[i].nextLimbNames.Length];
@@ -48,7 +50,7 @@ public class ConnectedLimbSystem
                 {
                     limbs[i].prevLimb = limbs[j];
                 }
-                if(limbs[i].nextLimbNames.Contains(limbs[j].name))
+                else if(limbs[i].nextLimbNames.Contains(limbs[j].name))
                 {
                     nextLimbs[nextIndexTracker] = (limbs[j]);
                     nextIndexTracker++;
@@ -84,6 +86,20 @@ public class ConnectedLimbSystem
             offsetChange += DetermineInputOffset(limb.nextLimbs[i], currentOffset + offsetChange);
         }
         return offsetChange;
+    }
+
+    private void SetupArrays(Limb limb)
+    {
+        for(int i = 0; i < limb.numInputs; i++)
+        {
+            int writeIndex = limb.inputOffset + i;
+            this.jointUpperLimits[writeIndex] = limb.upperJointLimits[i];
+            this.jointLowerLimits[writeIndex] = limb.lowerJointLimits[i];
+        }
+        for(int i = 0; i < limb.nextLimbs.Length; i++)
+        {
+            SetupArrays(limb.nextLimbs[i]);
+        }
     }
 
     public void OrientGameObjects(float[] positionVector)
@@ -134,16 +150,16 @@ public class ConnectedLimbSystem
         float[] jointInputs = new float[states.Length];
         CalcJointForces(this.root, ref wrenchMoments, ref wrenchForces, ref jointInputs);
 
-        relativePosesdb = relativePoses;
+        this.relativePosesdb = relativePoses;
 
-        twistRotdb = twistRot;
-        twistTransdb = twistTrans;
+        this.twistRotdb = twistRot;
+        this.twistTransdb = twistTrans;
 
-        dTwistRotdb = dTwistRot;
-        dTwistTransdb = dTwistTrans;
+        this.dTwistRotdb = dTwistRot;
+        this.dTwistTransdb = dTwistTrans;
 
-        wrenchMomentsdb = wrenchMoments;
-        wrenchForcesdb = wrenchForces;
+        this.wrenchMomentsdb = wrenchMoments;
+        this.wrenchForcesdb = wrenchForces;
 
         return (jointInputs, worldPoses);
 
@@ -278,6 +294,7 @@ public class ConnectedLimbSystem
             }
         }
     }
+    
     private void CalcJointForces(Limb limb, ref float3[] wrenchMoments, ref float3[] wrenchForces, ref float[] jointInputs)
     {
         for(int i = 0; i < limb.numInputs; i++)
@@ -311,16 +328,27 @@ public class ConnectedLimbSystem
     }
     public Limb FindLimbByName(string target)
     {
-        return FindLimbByName(this.root, target);
+        Limb found = FindLimbByName(this.root, target);
+        if(!found.IsUnityNull())
+        {
+            return found;
+        }
+        else
+        {
+            Debug.LogException(new NullReferenceException($"Limb by name {target} not found"));
+            return null;
+        }
     }
     private Limb FindLimbByName(Limb limb, string target)
     {
+        Debug.Log($"recursing to {limb.name}");
         if(target == limb.name)
         {
             return limb;
         }
         else if(limb.nextLimbs.Length == 0)
         {
+            Debug.Log($"exiting search down {limb.name} path");
             return null;
         }
         else
@@ -329,9 +357,13 @@ public class ConnectedLimbSystem
             for(int i = 0; i < limb.nextLimbs.Length; i++)
             {
                 holder = FindLimbByName(limb.nextLimbs[i], target);
-                if(holder.name == target)
+                if(!holder.IsUnityNull())
                 {
-                    return holder;
+                    if(holder.name == target)
+                    {
+                        Debug.Log($"{target} found");
+                        return holder;
+                    }
                 }
             }
             return null;

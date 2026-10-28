@@ -65,7 +65,7 @@ public class TestLimbSystem : MonoBehaviour
         Limb limb2 = new Limb("limb2", Object.Instantiate(limbPrefab), 12, new float3(1.0625f, .125f, 1.0625f), "limb1", new string[] { "limb3" }, limb2Home, limb2ScrewRot, limb2ScrewPos);
         Limb limb3 = new Limb("limb3", Object.Instantiate(limbPrefab), 12, new float3(1.0625f, .125f, 1.0625f), "limb2", null, limb3Home, limb3ScrewRot, limb3ScrewPos);
         Limb[] testLimbs = { limb1, limb2, limb3 };
-        testLimbSys = new ConnectedLimbSystem(testLimbs);
+        testLimbSys = new ConnectedLimbSystem(testLimbs, "test");
 
         thetaMod = new float[testLimbSys.totalInputs];
         theta = new float[testLimbSys.totalInputs];

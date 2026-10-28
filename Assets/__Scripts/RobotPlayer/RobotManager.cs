@@ -3,18 +3,18 @@ using UnityEngine;
 
 public class RobotManager : MonoBehaviour
 {
-    public GameObject testSphere;
+    public static ConnectedLimbSystem robotSystem;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
-        
+        robotSystem = HumanRenderer.robotSys;
     }
 
     // Update is called once per frame
-    void Update()
+    void FixedUpdate()
     {
         bool visualizeRobot = SettingsManager.GetBool("robotvis");
-        testSphere.SetActive(visualizeRobot);
+        robotSystem.sysObject.SetActive(visualizeRobot);
     }
 }
