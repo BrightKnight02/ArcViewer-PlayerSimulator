@@ -42,11 +42,6 @@ public class HumanRenderer : MonoBehaviour
         if(time - prevTime > dt)
         {
             robotSys.OrientGameObjects(theta);
-            //for(int i = 3; i < theta.Length; i++)
-            //{
-            //    theta[i] += 0.1f;
-            //    theta[i] = theta[i] % (2 * Mathf.PI);
-            //}
             prevTime = time;
             for(int i = 3; i < theta.Length; i++)
             {

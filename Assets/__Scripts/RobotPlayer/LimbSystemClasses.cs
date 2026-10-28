@@ -69,7 +69,10 @@ public class ConnectedLimbSystem
             }
         }
         Debug.Log("Before calculating offsets");
-        DetermineInputOffset(root, 0); // I think this should return the total number of inputs
+        DetermineInputOffset(this.root, 0); // I think this should return the total number of inputs
+        this.jointUpperLimits = new float[this.totalInputs];
+        this.jointLowerLimits = new float[this.totalInputs];
+        SetupArrays(this.root);
         Debug.Log("Finished limb system construction");
     }
 
@@ -90,11 +93,12 @@ public class ConnectedLimbSystem
 
     private void SetupArrays(Limb limb)
     {
+        Debug.Log("Setting " + limb.ToString() + " limits");
         for(int i = 0; i < limb.numInputs; i++)
         {
             int writeIndex = limb.inputOffset + i;
-            this.jointUpperLimits[writeIndex] = limb.upperJointLimits[i];
             this.jointLowerLimits[writeIndex] = limb.lowerJointLimits[i];
+            this.jointUpperLimits[writeIndex] = limb.upperJointLimits[i];
         }
         for(int i = 0; i < limb.nextLimbs.Length; i++)
         {
@@ -341,14 +345,14 @@ public class ConnectedLimbSystem
     }
     private Limb FindLimbByName(Limb limb, string target)
     {
-        Debug.Log($"recursing to {limb.name}");
+        //Debug.Log($"recursing to {limb.name}");
         if(target == limb.name)
         {
             return limb;
         }
         else if(limb.nextLimbs.Length == 0)
         {
-            Debug.Log($"exiting search down {limb.name} path");
+            //Debug.Log($"exiting search down {limb.name} path");
             return null;
         }
         else
@@ -424,7 +428,7 @@ public class Limb
             }
         }
         this.upperJointLimits = new float[this.numInputs];
-        if(lowerJointLimits == null)
+        if(upperJointLimits == null)
         {
             for(int i = 0; i < this.numInputs; i++)
             {

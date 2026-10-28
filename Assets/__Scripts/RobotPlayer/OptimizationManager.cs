@@ -11,6 +11,7 @@ public class OptimizationManager
     private static ConnectedLimbSystem robotSys;
     private static int numTimeSteps;
     private static int totalNumStates;
+    public static bool optRunning = false;
 
     private static (float[], float[]) StatesFromAccelerations(float[] accelerations)
     {
@@ -61,11 +62,19 @@ public class OptimizationManager
 
     public static void FindOptimalTrajectory()
     {
+        optRunning = true;
         robotSys = RobotManager.robotSystem;
         float songDuration = SongManager.GetSongLength();
         numTimeSteps = (int)(songDuration / simDT);
+        
+        float[] times = new float[numTimeSteps];
+        for(int i = 1; i < numTimeSteps; i++)
+        {
+            times[i] = times[i - 1] + simDT;
+        }
 
         theta0 = new float[robotSys.totalInputs];
+        Debug.Log(theta0[0]);
         for(int i = 3; i < theta0.Length; i++)
         {
             theta0[i] = (robotSys.jointUpperLimits[i] + robotSys.jointLowerLimits[i]) / 2;
@@ -76,6 +85,18 @@ public class OptimizationManager
         double[] dthetas0 = new double[totalNumStates];
         double[] s = new double[totalNumStates];
         Array.Fill(s, 1);
+
+
+        // ObjectManager.Instance.noteManager.Objects contains the notes when a map is loaded
+        Debug.Log("Object Debugging");
+        int start = ObjectManager.Instance.noteManager.Objects.GetFirstIndex(0, x => true);
+        int end = ObjectManager.Instance.noteManager.Objects.GetLastIndex(0, x => true);
+        Debug.Log("Objects start index:" + start.ToString());
+        Debug.Log("Objects end index:" + end.ToString());
+        Debug.Log("Object count: " + ObjectManager.Instance.noteManager.Objects.Count.ToString());
+        Debug.Log(ObjectManager.Instance.noteManager.Objects[0].Time);
+
+
 
         double epsx = 0.000001;
         int maxits = 0;
@@ -93,5 +114,7 @@ public class OptimizationManager
         alglib.minnlcsetcond(state, epsx, maxits);
         alglib.minnlcsetscale(state, s);
         alglib.minnlcsetalgoorbit(state, 0, 0);
+
+
     }
 }
