@@ -7,53 +7,53 @@ public class TestLimbSystem : MonoBehaviour
     public GameObject limbPrefab;
 
 
-    public float[] theta;
-    public float[] dtheta;
-    public float[] ddtheta;
-    public float[] tau;
-    public float4x4[] worldPoses;
+    public double[] theta;
+    public double[] dtheta;
+    public double[] ddtheta;
+    public double[] tau;
+    public double4x4[] worldPoses;
 
-    public float4x4 debugPose1;
-    public float4x4 debugPose2;
+    public double4x4 debugPose1;
+    public double4x4 debugPose2;
 
-    public float4x4[] relativePosesdb;
+    public double4x4[] relativePosesdb;
 
-    public float3[] twistRotdb;
-    public float3[] twistTransdb;
+    public double3[] twistRotdb;
+    public double3[] twistTransdb;
 
-    public float3[] dTwistRotdb;
-    public float3[] dTwistTransdb;
+    public double3[] dTwistRotdb;
+    public double3[] dTwistTransdb;
 
-    public float3[] wrenchMomentsdb;
-    public float3[] wrenchForcesdb;
+    public double3[] wrenchMomentsdb;
+    public double3[] wrenchForcesdb;
 
-    private float[] thetaMod;
+    private double[] thetaMod;
 
     //limb1 definitions
-    private static float4x4 limb1Home = new float4x4(1, 0, 0, 0,
+    private static double4x4 limb1Home = new double4x4(1, 0, 0, 0,
                                               0, 1, 0, 0.5f,
                                               0, 0, 1, 1,
                                               0, 0, 0, 1);
-    private static float3[] limb1ScrewRot = { new float3(1, 0, 0),
-                                              new float3(0, 1, 0) };
-    private static float3[] limb1ScrewPos = { new float3(0, 0, 1),
-                                              new float3(0, 0, 1) };
+    private static double3[] limb1ScrewRot = { new double3(1, 0, 0),
+                                              new double3(0, 1, 0) };
+    private static double3[] limb1ScrewPos = { new double3(0, 0, 1),
+                                              new double3(0, 0, 1) };
 
     //limb2 definitions
-    private static float4x4 limb2Home = new float4x4(1, 0, 0, 0,
+    private static double4x4 limb2Home = new double4x4(1, 0, 0, 0,
                                                      0, 1, 0, 1.5f,
                                                      0, 0, 1, 1,
                                                      0, 0, 0, 1);
-    private static float3[] limb2ScrewRot = { new float3(0, 0, 1) };
-    private static float3[] limb2ScrewPos = { new float3(0, 1, 1) };
+    private static double3[] limb2ScrewRot = { new double3(0, 0, 1) };
+    private static double3[] limb2ScrewPos = { new double3(0, 1, 1) };
 
     //limb3 definitions
-    private static float4x4 limb3Home = new float4x4(1, 0, 0, 0,
+    private static double4x4 limb3Home = new double4x4(1, 0, 0, 0,
                                                      0, 1, 0, 2.5f,
                                                      0, 0, 1, 1,
                                                      0, 0, 0, 1);
-    private static float3[] limb3ScrewRot = { new float3(1, 0, 0) };
-    private static float3[] limb3ScrewPos = { new float3(0, 2, 1) };
+    private static double3[] limb3ScrewRot = { new double3(1, 0, 0) };
+    private static double3[] limb3ScrewPos = { new double3(0, 2, 1) };
 
 
     static ConnectedLimbSystem testLimbSys;
@@ -61,26 +61,26 @@ public class TestLimbSystem : MonoBehaviour
 
     private void Start()
     {
-        Limb limb1 = new Limb("limb1", Object.Instantiate(limbPrefab), 12, new float3(1.0625f, .125f, 1.0625f), null, new string[] { "limb2" }, limb1Home, limb1ScrewRot, limb1ScrewPos);
-        Limb limb2 = new Limb("limb2", Object.Instantiate(limbPrefab), 12, new float3(1.0625f, .125f, 1.0625f), "limb1", new string[] { "limb3" }, limb2Home, limb2ScrewRot, limb2ScrewPos);
-        Limb limb3 = new Limb("limb3", Object.Instantiate(limbPrefab), 12, new float3(1.0625f, .125f, 1.0625f), "limb2", null, limb3Home, limb3ScrewRot, limb3ScrewPos);
+        Limb limb1 = new Limb("limb1", Object.Instantiate(limbPrefab), 12, new double3(1.0625f, .125f, 1.0625f), null, new string[] { "limb2" }, limb1Home, limb1ScrewRot, limb1ScrewPos);
+        Limb limb2 = new Limb("limb2", Object.Instantiate(limbPrefab), 12, new double3(1.0625f, .125f, 1.0625f), "limb1", new string[] { "limb3" }, limb2Home, limb2ScrewRot, limb2ScrewPos);
+        Limb limb3 = new Limb("limb3", Object.Instantiate(limbPrefab), 12, new double3(1.0625f, .125f, 1.0625f), "limb2", null, limb3Home, limb3ScrewRot, limb3ScrewPos);
         Limb[] testLimbs = { limb1, limb2, limb3 };
         testLimbSys = new ConnectedLimbSystem(testLimbs, "test");
 
-        thetaMod = new float[testLimbSys.totalInputs];
-        theta = new float[testLimbSys.totalInputs];
-        dtheta = new float[testLimbSys.totalInputs];
-        ddtheta = new float[testLimbSys.totalInputs];
-        tau = new float[testLimbSys.totalInputs];
+        thetaMod = new double[testLimbSys.numInputs];
+        theta = new double[testLimbSys.numInputs];
+        dtheta = new double[testLimbSys.numInputs];
+        ddtheta = new double[testLimbSys.numInputs];
+        tau = new double[testLimbSys.numInputs];
     }
 
     void Update()
     {
-        //float theta1 = SettingsManager.GetFloat("usertheta1") * math.PI;
-        //float theta2 = SettingsManager.GetFloat("usertheta2") * math.PI;
-        //float theta3 = SettingsManager.GetFloat("usertheta3") * math.PI;
+        //double theta1 = SettingsManager.Getdouble("usertheta1") * math.PI;
+        //double theta2 = SettingsManager.Getdouble("usertheta2") * math.PI;
+        //double theta3 = SettingsManager.Getdouble("usertheta3") * math.PI;
 
-        //float[] theta = { theta1, theta2, theta3 };
+        //double[] theta = { theta1, theta2, theta3 };
 
         //Debug.Log("Theta: " + theta.ToString());
         for(int i = 0; i < theta.Length; i++)

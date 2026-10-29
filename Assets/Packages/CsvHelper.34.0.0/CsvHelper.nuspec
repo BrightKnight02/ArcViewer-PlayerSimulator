@@ -1,0 +1,33 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+  <metadata>
+    <id>CsvHelper</id>
+    <version>34.0.0</version>
+    <authors>Josh Close</authors>
+    <requireLicenseAcceptance>true</requireLicenseAcceptance>
+    <license type="expression">MS-PL OR Apache-2.0</license>
+    <licenseUrl>https://licenses.nuget.org/MS-PL%20OR%20Apache-2.0</licenseUrl>
+    <icon>Icon.png</icon>
+    <projectUrl>https://joshclose.github.io/CsvHelper/</projectUrl>
+    <description>A SIMD accelerated, allocation free CSV reader and RFC 4180 writer for .NET.</description>
+    <releaseNotes>https://joshclose.github.io/CsvHelper/changelog.html</releaseNotes>
+    <copyright>Copyright © 2009-2026 Josh Close</copyright>
+    <tags>csv csvhelper comma separated value delimited</tags>
+    <repository type="git" url="https://github.com/JoshClose/CsvHelper" branch="refs/heads/master" commit="a314ac89d1b528b13fbd15778372e4675aa5398f" />
+    <dependencies>
+      <group targetFramework="net10.0" />
+      <group targetFramework=".NETFramework4.7">
+        <dependency id="Microsoft.Bcl.AsyncInterfaces" version="8.0.0" exclude="Build,Analyzers" />
+        <dependency id="System.Memory" version="4.5.5" exclude="Build,Analyzers" />
+      </group>
+      <group targetFramework="net8.0" />
+      <group targetFramework=".NETStandard2.0">
+        <dependency id="Microsoft.Bcl.AsyncInterfaces" version="8.0.0" exclude="Build,Analyzers" />
+        <dependency id="System.Memory" version="4.5.5" exclude="Build,Analyzers" />
+      </group>
+      <group targetFramework=".NETStandard2.1">
+        <dependency id="System.Runtime.CompilerServices.Unsafe" version="6.1.2" exclude="Build,Analyzers" />
+      </group>
+    </dependencies>
+  </metadata>
+</package>

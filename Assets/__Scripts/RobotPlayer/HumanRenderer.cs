@@ -8,7 +8,7 @@ public class HumanRenderer : MonoBehaviour
 {
     public static ConnectedLimbSystem robotSys;
     public GameObject saberPrefab;
-    public float[] theta;
+    public double[] theta;
 
     private float prevTime = 0;
 
@@ -26,7 +26,7 @@ public class HumanRenderer : MonoBehaviour
         rightSaber.transform.rotation = Quaternion.Euler(0, 90, 0);
         rightSaber.transform.parent = rightHand.visObject.transform;
         
-        theta = new float[robotSys.totalInputs];
+        theta = new double[robotSys.numInputs];
     }
 
     // Update is called once per frame

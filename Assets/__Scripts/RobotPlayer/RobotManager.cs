@@ -22,7 +22,9 @@ public class RobotManager : MonoBehaviour
         if(!OptimizationManager.optRunning && BeatmapManager.CurrentDifficulty.difficultyRank == DifficultyRank.Easy)
         {
             Debug.Log("Running Optimization");
-            OptimizationManager.FindOptimalTrajectory();
+            Debug.Log(robotSystem.numInputs);
+            OptimizationManager.optRunning = true;
+            OptimizationManager.FindOptimalTrajectory(2.5, 5);
         }
     }
 }
