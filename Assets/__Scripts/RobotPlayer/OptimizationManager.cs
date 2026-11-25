@@ -177,8 +177,9 @@ public class OptimizationManager
             double3 positionError;
             for(int j = math.max(0, timeIndex - timeIndexChange); j <= timeIndex; j++)
             {
-                positionError = SE3Functions.PosePos(handPoses[j]) - new double3(curNote.Position[0], curNote.Position[1], (curNote.Time - optiInfo.times[j]) * njs * 0.5);
-                positionErrorMagnitude = math.min(positionErrorMagnitude, SE3Functions.Dot(positionError, positionError));
+                positionError = SE3.ExtractPoseFromPose(handPoses[j]) 
+                                - new double3(curNote.Position[0], curNote.Position[1], (curNote.Time - optiInfo.times[j]) * njs * 0.5);
+                positionErrorMagnitude = math.min(positionErrorMagnitude, SE3.Dot(positionError, positionError));
             }
             constraints[noteIndex * numNoteConstraints] = positionErrorMagnitude;
         }
@@ -214,10 +215,10 @@ public class OptimizationManager
         double springCost = 0;
         for(int i = 0; i < optiInfo.numTimeSteps; i++)
         {
-            pelvisPosHolder = SE3Functions.PosePos(pelvisPoses[i]);
-            springCost += SE3Functions.Dot(pelvisPosHolder, pelvisPosHolder);
+            pelvisPosHolder = SE3.ExtractPoseFromPose(pelvisPoses[i]);
+            springCost += SE3.Dot(pelvisPosHolder, pelvisPosHolder);
         }
-        return SE3Functions.Dot(torques, torques) + springCost;
+        return SE3.Dot(torques, torques) + springCost;
     }
 
     public static void OptimizerFunction(double[] states, double[] foutput, object obj)

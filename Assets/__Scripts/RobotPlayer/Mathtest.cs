@@ -31,13 +31,13 @@ public class Mathtest : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        skewed = SE3Functions.SkewedVector(w1);
-        matrixexp = SE3Functions.ScrewMatrixExponential(w1, v1, theta);
-        rot = SE3Functions.ExtractPoseRotation(matrixexp);
-        rotInv = SE3Functions.RotationInverse(rot);
-        poseInv = SE3Functions.PoseInverse(matrixexp);
-        (bigAdjointW, bigAdjointW) = SE3Functions.AdjointBigSE3(matrixexp, w2, v2);
-        (smallAdjointW, smallAdjointW) = SE3Functions.AdjointLittleSE3(w1, v1, w2, v2);
+        skewed = SE3.SkewedVector(w1);
+        matrixexp = SE3.ScrewMatrixExponential(w1, v1, theta);
+        rot = SE3.ExtractPoseRotation(matrixexp);
+        rotInv = SE3.RotationInverse(rot);
+        poseInv = SE3.PoseInverse(matrixexp);
+        (bigAdjointW, bigAdjointW) = SE3.AdjointBigSE3(matrixexp, w2, v2);
+        (smallAdjointW, smallAdjointW) = SE3.AdjointLittleSE3(w1, v1, w2, v2);
 
     }
 }

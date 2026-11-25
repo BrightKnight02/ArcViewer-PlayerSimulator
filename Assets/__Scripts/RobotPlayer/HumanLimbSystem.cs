@@ -18,7 +18,7 @@ public class HumanLimbSystem
         GameObject pelvisObject = ScaledCube(.25f, 0.1f, 0.2f);
 
         Limb pelvis = new Limb("pelvis", pelvisObject, 4.98f, new double3(0.01f, 0.03f, 0.03f),
-            null, new string[] { "lowerBack" }, SE3Functions.PoseFromPos(pelvisPos),
+            null, new string[] { "lowerBack" }, SE3.PoseFromPos(pelvisPos),
             new double3[] { new double3(0, 0, 0), new double3(0, 0, 0), new double3(0, 0, 0) },
             new double3[] { new double3(1, 0, 0), new double3(0, 1, 0), new double3(0, 0, 1) },
             new double[] { -0.1f, 0.45f, -0.1f }, new double[] { 0.1f, 0.93f, 0.1f });
@@ -28,7 +28,7 @@ public class HumanLimbSystem
         GameObject lowerBackObject = ScaledCube(0.2f, .5f, .1f);
 
         Limb lowerBack = new Limb("lowerBack", lowerBackObject, 6.344f * 2, new double3(0.019f, 2 * .024f + 2 * 6.334f * 0.25f * 0.25f, 0.037f), // combining L3 and L5 from urdf
-            "pelvis", new string[] { "ribs" }, SE3Functions.PoseFromPos(lbCOM),
+            "pelvis", new string[] { "ribs" }, SE3.PoseFromPos(lbCOM),
             new double3[] { new double3(0, 0, 1), new double3(1, 0, 0) },
             new double3[] { lbRot, lbRot },
             new double[] { -1.3f, -0.61f }, new double[] { 0.52f, 0.61f });
@@ -38,7 +38,7 @@ public class HumanLimbSystem
         GameObject ribsObject = ScaledCube(.2f, 0.4f, .2f);
 
         Limb ribs = new Limb("ribs", ribsObject, 6.344f + 2.488f, new double3(0.021f, 0.028f + 6.344f * .04f * .04f + 2.488f * 0.1f * 0.1f, 0.022f), //COMs .14 apart 
-            "lowerBack", new string[] { "neck", "leftShoulder", "rightShoulder" }, SE3Functions.PoseFromPos(ribsCOM),
+            "lowerBack", new string[] { "neck", "leftShoulder", "rightShoulder" }, SE3.PoseFromPos(ribsCOM),
             new double3[] { new double3(0, 0, 1), new double3(1, 0, 0), new double3(0, 1, 0) },
             new double3[] { ribsRot, ribsRot, ribsRot },
             new double[] { -1, -2f, -0.6f }, new double[] { 1, 0.75f, 0.6f });
@@ -55,7 +55,7 @@ public class HumanLimbSystem
         headObject.layer = 12;
 
         Limb neck = new Limb("neck", neckObject, 0.75f + 2.24f, new double3(0.0076f, 0.0074f + 2.24f * 0.4f * 0.4f + 0.75f * .13f * .13f, 0.0076f),
-            "ribs", null, SE3Functions.PoseFromPos(headNeckCOM),
+            "ribs", null, SE3.PoseFromPos(headNeckCOM),
             new double3[] { new double3(0, 0, 1) }, new double3[] { neckRot },
             new double[] { -0.61f }, new double[] { 0.61f });
 
@@ -66,7 +66,7 @@ public class HumanLimbSystem
         GameObject shoulderObject = ScaledCube(0.1f, 0.1f, 0.1f);
 
         Limb rightShoulder = new Limb("rightShoulder", shoulderObject, 1.928f, new double3(0.0005f, 0.003f, 0.003f),
-            "ribs", new string[] { "rightUpperArm" }, SE3Functions.PoseFromPos(rShoulderCOM),
+            "ribs", new string[] { "rightUpperArm" }, SE3.PoseFromPos(rShoulderCOM),
             new double3[] { new double3(0, 0, 1) },
             new double3[] { rShoulderRot },
             new double[] { -0.087f }, new double[] { 0.785f });
@@ -76,7 +76,7 @@ public class HumanLimbSystem
         GameObject upperArmObject = ScaledCube(0.26f, 0.1f, 0.1f);
 
         Limb rightUpperArm = new Limb("rightUpperArm", upperArmObject, 1.866f, new double3(0.0008f, 0.011f, 0.011f),
-            "rightShoulder", new string[] {"rightLowerArm"}, SE3Functions.PoseFromPos(rUArmCOM),
+            "rightShoulder", new string[] {"rightLowerArm"}, SE3.PoseFromPos(rUArmCOM),
             new double3[] { new double3(0, 0, 1), new double3(1, 0, 0), new double3(0, 1, 0) },
             new double3[] { rUArmRot, rUArmRot, rUArmRot },
             new double[] { -2.35f, -1.57f, -0.78f }, new double[] { 1.57f, 1.57f, 3.14f });
@@ -86,7 +86,7 @@ public class HumanLimbSystem
         GameObject lowerArmObject = ScaledCube(0.22f, 0.05f, 0.05f);
 
         Limb rightLowerArm = new Limb("rightLowerArm", lowerArmObject, 1.244f, new double3(0.0002f, 0.005f, 0.005f),
-            "rightUpperArm", new string[] { "rightHand" }, SE3Functions.PoseFromPos(rLArmCOM),
+            "rightUpperArm", new string[] { "rightHand" }, SE3.PoseFromPos(rLArmCOM),
             new double3[] { new double3(1, 0, 0), new double3(0, 1, 0) },
             new double3[] { rLArmRot, rLArmRot },
             new double[] { -0.78f, -1.57f }, new double[] { 3.141f, 1.48f });
@@ -96,7 +96,7 @@ public class HumanLimbSystem
         GameObject handObject = ScaledCube(0.11f, 0.07f, 0.11f);
 
         Limb rightHand = new Limb("rightHand", handObject, 0.37f, new double3(0.0004f, 0.001f, 0.0009f),
-            "rightLowerArm", null, SE3Functions.PoseFromPos(rHandCOM),
+            "rightLowerArm", null, SE3.PoseFromPos(rHandCOM),
             new double3[] { new double3(0, 0, 1), new double3(0, 1, 0) },
             new double3[] { rHandRot, rHandRot },
             new double[] { -0.87f, -0.34f }, new double[] { 1.04f, 0.52f });
@@ -109,7 +109,7 @@ public class HumanLimbSystem
         lShoulderCOM[0] *= -1;
 
         Limb leftShoulder = new Limb("leftShoulder", GameObject.Instantiate(shoulderObject), 1.928f, new double3(0.0005f, 0.003f, 0.003f),
-            "ribs", new string[] { "leftUpperArm" }, SE3Functions.PoseFromPos(lShoulderCOM),
+            "ribs", new string[] { "leftUpperArm" }, SE3.PoseFromPos(lShoulderCOM),
             new double3[] { new double3(0, 0, 1) },
             new double3[] { lShoulderRot },
             new double[] { -0.087f }, new double[] { 0.785f });
@@ -120,7 +120,7 @@ public class HumanLimbSystem
         lUArmCOM[0] *= -1;
 
         Limb leftUpperArm = new Limb("leftUpperArm", GameObject.Instantiate(upperArmObject), 1.866f, new double3(0.0008f, 0.011f, 0.011f),
-            "leftShoulder", new string[] { "leftLowerArm" }, SE3Functions.PoseFromPos(lUArmCOM),
+            "leftShoulder", new string[] { "leftLowerArm" }, SE3.PoseFromPos(lUArmCOM),
             new double3[] { new double3(0, 0, 1), new double3(1, 0, 0), new double3(0, 1, 0) },
             new double3[] { lUArmRot, lUArmRot, lUArmRot },
             new double[] { -2.35f, -1.57f, -0.78f }, new double[] { 1.57f, 1.57f, 3.14f });
@@ -131,7 +131,7 @@ public class HumanLimbSystem
         lLArmCOM[0] *= -1;
 
         Limb leftLowerArm = new Limb("leftLowerArm", GameObject.Instantiate(lowerArmObject), 1.244f, new double3(0.0002f, 0.005f, 0.005f),
-            "leftUpperArm", new string[] { "leftHand" }, SE3Functions.PoseFromPos(lLArmCOM),
+            "leftUpperArm", new string[] { "leftHand" }, SE3.PoseFromPos(lLArmCOM),
             new double3[] { new double3(1, 0, 0), new double3(0, 1, 0) },
             new double3[] { lLArmRot, lLArmRot },
             new double[] { -0.78f, -1.57f }, new double[] { 3.141f, 1.48f });
@@ -142,7 +142,7 @@ public class HumanLimbSystem
         lHandCOM[0] *= -1;
 
         Limb leftHand = new Limb("leftHand", GameObject.Instantiate(handObject), 0.37f, new double3(0.0004f, 0.001f, 0.0009f),
-            "leftLowerArm", null, SE3Functions.PoseFromPos(lHandCOM),
+            "leftLowerArm", null, SE3.PoseFromPos(lHandCOM),
             new double3[] { new double3(0, 0, 1), new double3(0, 1, 0) },
             new double3[] { lHandRot, lHandRot },
             new double[] { -0.87f, -0.34f }, new double[] { 1.04f, 0.52f });

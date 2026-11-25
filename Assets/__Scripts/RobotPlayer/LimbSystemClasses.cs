@@ -5,6 +5,7 @@ using Unity.Mathematics;
 using Unity.VisualScripting;
 using UnityEngine;
 
+
 public class ConnectedLimbSystem
 {
     public Limb root;
@@ -61,11 +62,11 @@ public class ConnectedLimbSystem
             if(limbs[i].prevLimbName == null)
             {
                 this.root = limbs[i];
-                limbs[i].relLinkPose = SE3Functions.PoseInverse(limbs[i].homePose);
+                limbs[i].relLinkPose = SE3.PoseInverse(limbs[i].homePose);
             }
             else
             {
-                limbs[i].relLinkPose = math.mul(SE3Functions.PoseInverse(limbs[i].homePose), limbs[i].prevLimb.homePose);
+                limbs[i].relLinkPose = math.mul(SE3.PoseInverse(limbs[i].homePose), limbs[i].prevLimb.homePose);
             }
         }
         Debug.Log("Before calculating offsets");
@@ -114,10 +115,10 @@ public class ConnectedLimbSystem
     private void PoseWalker(double[] positionVector, Limb limb, double4x4 prevPose)
     {
         double4x4 limbPose = math.mul(limb.RelativePoseFromInput(positionVector), prevPose);
-        double4x4 worldPose = SE3Functions.PoseInverse(limbPose);
+        double4x4 worldPose = SE3.PoseInverse(limbPose);
 
-        limb.visObject.transform.position = new float3(SE3Functions.PosePos(worldPose));
-        limb.visObject.transform.rotation = math.quaternion(new float3x3(SE3Functions.ExtractPoseRotation(worldPose)));
+        limb.visObject.transform.position = new float3(SE3.ExtractPoseFromPose(worldPose));
+        limb.visObject.transform.rotation = math.quaternion(new float3x3(SE3.ExtractPoseRotation(worldPose)));
 
         for(int i = 0; i < limb.nextLimbs.Length; i++)
         {
@@ -186,7 +187,7 @@ public class ConnectedLimbSystem
         {
             int writeIndex = inputIndex + limb.inputOffset;
             // T_{i, i-1} = exp(-[A_i] \theta_i) * M_{i, i-1}
-            relativePoses[writeIndex] = SE3Functions.ScrewMatrixExponential(-limb.LinkScrewRotAxes[inputIndex], -limb.LinkScrewTransAxes[inputIndex], states[writeIndex]);
+            relativePoses[writeIndex] = SE3.ScrewMatrixExponential(-limb.LinkScrewRotAxes[inputIndex], -limb.LinkScrewTransAxes[inputIndex], states[writeIndex]);
             if(inputIndex == 0)
             {
                 relativePoses[writeIndex] = math.mul(relativePoses[writeIndex], limb.relLinkPose);
@@ -222,13 +223,13 @@ public class ConnectedLimbSystem
             }
 
             // V_i = Ad_{T_{i, i-1}}(V_{i-1}) + A_i * \dot\theta
-            (tempRot, tempTrans) = SE3Functions.AdjointBigSE3(relativePoses[writeIndex], prevTwistRot, prevTwistTrans);
+            (tempRot, tempTrans) = SE3.AdjointBigSE3(relativePoses[writeIndex], prevTwistRot, prevTwistTrans);
             twistRot[writeIndex] = limb.LinkScrewRotAxes[inputIndex] * velocities[writeIndex] + tempRot;
             twistTrans[writeIndex] = limb.LinkScrewTransAxes[inputIndex] * velocities[writeIndex] + tempTrans;
 
             // \dot V_i = Ad_{T_{i, i-1}}(\dot V_{i-1}) + ad_{V_i}(A_i) * \dot\theta + A_i * \ddot\theta
-            (dTwistRot[writeIndex], dTwistTrans[writeIndex]) = SE3Functions.AdjointBigSE3(relativePoses[writeIndex], prevDTwistRot, prevDTwistTrans);
-            (tempRot, tempTrans) = SE3Functions.AdjointLittleSE3(twistRot[writeIndex], twistTrans[writeIndex], limb.LinkScrewRotAxes[inputIndex], limb.LinkScrewTransAxes[inputIndex]);
+            (dTwistRot[writeIndex], dTwistTrans[writeIndex]) = SE3.AdjointBigSE3(relativePoses[writeIndex], prevDTwistRot, prevDTwistTrans);
+            (tempRot, tempTrans) = SE3.AdjointLittleSE3(twistRot[writeIndex], twistTrans[writeIndex], limb.LinkScrewRotAxes[inputIndex], limb.LinkScrewTransAxes[inputIndex]);
             dTwistRot[writeIndex] += tempRot * velocities[writeIndex] + limb.LinkScrewRotAxes[inputIndex] * accelerations[writeIndex];
             dTwistTrans[writeIndex] += tempTrans * velocities[writeIndex] + limb.LinkScrewTransAxes[inputIndex] * accelerations[writeIndex];
         }
@@ -262,7 +263,7 @@ public class ConnectedLimbSystem
                 wrenchMoments[writeIndex] = math.mul(limb.inertia, dTwistRot[writeIndex]);
                 wrenchForces[writeIndex] = limb.mass * dTwistTrans[writeIndex];
 
-                (tempMoment, tempForce) = SE3Functions.AdjointTransposeLittleSE3(twistRot[writeIndex], twistTrans[writeIndex],
+                (tempMoment, tempForce) = SE3.AdjointTransposeLittleSE3(twistRot[writeIndex], twistTrans[writeIndex],
                     math.mul(limb.inertia, dTwistRot[writeIndex]), limb.mass * twistTrans[writeIndex]);
                 wrenchMoments[writeIndex] -= tempMoment;
                 wrenchForces[writeIndex] -= tempForce;
@@ -284,7 +285,7 @@ public class ConnectedLimbSystem
                         InverseDynamicsBackwardStep(limb.nextLimbs[outputIndex], states, velocities, accelerations,
                                                 ref relativePoses, ref twistRot, ref twistTrans, ref dTwistRot, ref dTwistTrans, ref wrenchMoments, ref wrenchForces);
 
-                        (tempMoment, tempForce) = SE3Functions.AdjointTransposeBigSE3(relativePoses[nextLimbIndex], wrenchMoments[nextLimbIndex], wrenchForces[nextLimbIndex]);
+                        (tempMoment, tempForce) = SE3.AdjointTransposeBigSE3(relativePoses[nextLimbIndex], wrenchMoments[nextLimbIndex], wrenchForces[nextLimbIndex]);
                         wrenchMoments[writeIndex] += tempMoment;
                         wrenchForces[writeIndex] += tempForce;
                     }
@@ -293,12 +294,12 @@ public class ConnectedLimbSystem
             else
             {
                 // sublinks for a limb have no inertial components, so only the component from the link upstream contributes
-                (wrenchMoments[writeIndex], wrenchForces[writeIndex]) = SE3Functions.AdjointTransposeBigSE3(relativePoses[writeIndex + 1],
+                (wrenchMoments[writeIndex], wrenchForces[writeIndex]) = SE3.AdjointTransposeBigSE3(relativePoses[writeIndex + 1],
                                                                                 wrenchMoments[writeIndex + 1], wrenchForces[writeIndex + 1]);
             }
         }
     }
-    
+
     private void CalcJointForces(Limb limb, ref double3[] wrenchMoments, ref double3[] wrenchForces, ref double[] jointInputs)
     {
         for(int i = 0; i < limb.numInputs; i++)
@@ -315,15 +316,15 @@ public class ConnectedLimbSystem
     {
         if(limb.inputOffset == 0)
         {
-            worldPoses[0] = SE3Functions.PoseInverse(relativePoses[0]);
+            worldPoses[0] = SE3.PoseInverse(relativePoses[0]);
         }
         else
         {
-            worldPoses[limb.inputOffset] = math.mul(worldPoses[limb.prevLimb.inputOffset + limb.prevLimb.numInputs - 1], SE3Functions.PoseInverse(relativePoses[limb.inputOffset]));
+            worldPoses[limb.inputOffset] = math.mul(worldPoses[limb.prevLimb.inputOffset + limb.prevLimb.numInputs - 1], SE3.PoseInverse(relativePoses[limb.inputOffset]));
         }
         for(int i = 1; i < limb.numInputs; i++)
         {
-            worldPoses[limb.inputOffset + i] = math.mul(worldPoses[limb.inputOffset + i - 1], SE3Functions.PoseInverse(relativePoses[limb.inputOffset + i]));
+            worldPoses[limb.inputOffset + i] = math.mul(worldPoses[limb.inputOffset + i - 1], SE3.PoseInverse(relativePoses[limb.inputOffset + i]));
         }
         for(int i = 0; i < limb.nextLimbs.Length; i++)
         {
@@ -383,7 +384,7 @@ public class Limb
     public string name;
     public GameObject visObject;
     public double mass;
-    public double3x3 inertia; // inertia tensor of the limb
+    public double[,] inertia; // inertia tensor of the limb
     public int numInputs;
     public double[] lowerJointLimits;
     public double[] upperJointLimits;
@@ -395,19 +396,17 @@ public class Limb
     public Limb prevLimb;
     public Limb[] nextLimbs;
 
-    public double4x4 homePose; // SE(3) matrix representing the link COM frame in base frame with all joint angles = 0
+    public double[,] homePose; // SE(3) matrix representing the link COM frame in base frame with all joint angles = 0
 
     // SE(3) matrix representing the previous link frame in the current link frame with all joint angles = 0
     // represents M_{i. i-1} from "Modern Robotics: Mechanics, Planning, and Control" by  Kevin M. Lynch and Frank Chongwoo Park
-    public double4x4 relLinkPose;
-    public double3[] BodyScrewRotAxes; // vectors in base frame representing the rotation axes for inputs at home
-    public double3[] BodyScrewTransAxes; // vectors in base frame representing the translation axes for the inputs at home
-    public double3[] LinkScrewRotAxes; // vectors in link frame representing the rotation axes for inputs at home
-    public double3[] LinkScrewTransAxes; // vectors in link frame representing the translation axes for the inputs at home
+    public double[,] relLinkPose;
+    public double[][] BodyScrewAxes; // 6x1 vectors in base frame representing the rotation axes for inputs at home
+    public double[][] LinkScrewAxes; // 6x1 vectors in link frame representing the rotation axes for inputs at home
 
     public Limb(string name, GameObject visObject, double limbMass, double3 limbInertia,
-        string prevLimbName, string[] nextLimbNames, double4x4 homePose,
-        double3[] screwRotAxes, double3[] screwPivotPoints,
+        string prevLimbName, string[] nextLimbNames, double[,] homePose,
+        double[][] screwRotAxes, double[][] screwPivotPoints,
         double[] lowerJointLimits = null, double[] upperJointLimits = null)
     {
         this.name = name;
@@ -444,9 +443,9 @@ public class Limb
         }
         this.visObject = visObject;
         this.mass = limbMass;
-        this.inertia = new double3x3(limbInertia[0], 0, 0,
-                                        0, limbInertia[1], 0,
-                                        0, 0, limbInertia[2]);
+        this.inertia = new double[,]{{limbInertia[0], 0, 0, },
+                                     { 0, limbInertia[1], 0, },
+                                     { 0, 0, limbInertia[2] }};
         this.prevLimbName = prevLimbName;
         if(nextLimbNames == null)
         {
@@ -457,30 +456,45 @@ public class Limb
         {
             this.nextLimbNames = nextLimbNames;
         }
-        this.homePose = homePose;
 
+        if(homePose.GetLength(0) != homePose.GetLength(1) || homePose.GetLength(0) != 4)
+        {
+            throw new ArgumentOutOfRangeException($"Incorrectly shaped home pose passed to {name}.");
+        }
+        else
+        {
+            this.homePose = homePose;
+        }
 
-        this.BodyScrewRotAxes = screwRotAxes;
-        this.BodyScrewTransAxes = screwPivotPoints;
+        this.BodyScrewAxes = new double[numInputs][];
         for(int i = 0; i < numInputs; i++)
         {
-            if(screwRotAxes[i].Equals(double3.zero))
+            this.BodyScrewAxes[i] = new double[6];
+            this.BodyScrewAxes[i][0] = screwRotAxes[i][0];
+            this.BodyScrewAxes[i][1] = screwRotAxes[i][1];
+            this.BodyScrewAxes[i][2] = screwRotAxes[i][2];
+
+            if(screwRotAxes[i][0] == 0 && screwRotAxes[i][1] == 0 && screwRotAxes[i][2] == 0)
             {
-                this.BodyScrewTransAxes[i] = screwPivotPoints[i];
+                this.BodyScrewAxes[i][3] = screwPivotPoints[i][0];
+                this.BodyScrewAxes[i][4] = screwPivotPoints[i][1];
+                this.BodyScrewAxes[i][5] = screwPivotPoints[i][2];
             }
             else
             {
-                this.BodyScrewTransAxes[i] = math.mul(-SE3Functions.SkewedVector(screwRotAxes[i]), screwPivotPoints[i]);
+                double[] temp = SE3.MatMul(SE3.MatMul(SE3.SkewedVector(screwRotAxes[i]), -1.0), screwPivotPoints[i]);
+                this.BodyScrewAxes[i][3] = temp[0];
+                this.BodyScrewAxes[i][4] = temp[1];
+                this.BodyScrewAxes[i][5] = temp[2];
             }
         }
 
-        this.LinkScrewRotAxes = new double3[numInputs];
-        this.LinkScrewTransAxes = new double3[numInputs];
+        this.LinkScrewAxes = new double[numInputs][];
 
 
         for(int i = 0; i < numInputs; i++)
         {
-            (this.LinkScrewRotAxes[i], this.LinkScrewTransAxes[i]) = SE3Functions.AdjointBigSE3(SE3Functions.PoseInverse(homePose), this.BodyScrewRotAxes[i], this.BodyScrewTransAxes[i]);
+            (this.LinkScrewRotAxes[i], this.LinkScrewTransAxes[i]) = SE3.AdjointBigSE3(SE3.PoseInverse(homePose), this.BodyScrewRotAxes[i], this.BodyScrewTransAxes[i]);
         }
 
     }
@@ -490,7 +504,7 @@ public class Limb
         double4x4 output = double4x4.identity;
         for(int i = 0; i < this.numInputs; i++)
         {
-            output = math.mul(SE3Functions.ScrewMatrixExponential(-1 * this.LinkScrewRotAxes[i], -1 * this.LinkScrewTransAxes[i], positionsVector[this.inputOffset + i]), output);
+            output = math.mul(SE3.ScrewMatrixExponential(-1 * this.LinkScrewRotAxes[i], -1 * this.LinkScrewTransAxes[i], positionsVector[this.inputOffset + i]), output);
         }
         return math.mul(output, this.relLinkPose);
     }
